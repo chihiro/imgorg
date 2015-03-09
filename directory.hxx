@@ -30,6 +30,7 @@ public:
 protected:
 	static std::string ext(std::string fn);
 	static bool exists(std::string fn);
+	static std::string name(int count);
 };
 
 Directory::Directory(char* path) {
@@ -48,6 +49,12 @@ std::string Directory::ext(std::string fn) {
 		return "";
 }
 
+std::string Directory::name(int count) {
+	char filename[256];
+	snprintf(filename, 255, "%04d", count);
+	return std::string(filename);
+}
+
 bool Directory::exists(std::string fn) {
 		std::ifstream handle(fn);
 		return handle.good();
@@ -64,7 +71,9 @@ void Directory::close() {
 }
 
 void Directory::rename() {
-	unsigned long count = 1;
+	int count = 0;
+	int success = 0;
+	int fail = 0;
 
 	while((this->props = readdir(this->dir)) != NULL) {
 		std::string name = this->props->d_name;
@@ -74,12 +83,28 @@ void Directory::rename() {
 
 		std::string suffix = this->ext(name);
 		std::string old = (this->path + "/" + name);
-		std::string newf = (this->path + "/" + std::to_string(count) + suffix);
+		std::string newf = (this->path + "/" + this->name(count) + suffix);
 
-		printf("%s -> %s\n",old.c_str(), newf.c_str());
-		std::rename(old.c_str(), newf.c_str());
-		count++;
+		if(this->exists(newf)) {
+			++fail;
+			continue;
+		}
+
+		if(std::rename(old.c_str(), newf.c_str()) == 0) {
+			printf("%s -> %s [OK]\n",old.c_str(), newf.c_str());
+			++success;
+		}
+
+		else {
+			printf("%s -> %s [FAIL - %d]\n",old.c_str(), newf.c_str(), errno);
+			++fail;
+		}
+
+		++count;
 	}
+
+	printf("Operated on %d files.\n", count);
+	printf("%d successes, %d failures.\n", success, fail);
 }
 
 #endif
